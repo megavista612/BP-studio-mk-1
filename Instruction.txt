@@ -1,0 +1,293 @@
+API Base URL
+All APIs described in this document share the following base URL:
+Base URL https://rt.data.gov.hk/
+
+1. Route-Stop API
+Description: This API takes a Citybus company ID, route direction and the company’s
+operating bus route number and returns the stop information of the respective route.
+Important Note: All New World First Bus routes already integrated into Citybus. Data of all
+routes are available under the {company_id} "CTB".
+HTTP Request:
+Endpoint route-stop/{company_id}/{route}/{direction}
+HTTP Method GET
+
+
+Sample Request:
+/v2/transport/citybus/route-stop/CTB/1/inbound
+
+Sample Response:
+{
+"type": "Route",
+"version": "2.0",
+"generated_timestamp": "2023-07-01T11:40:48+08:00",
+"data": [
+{
+"co": "CTB",
+"route": "1",
+"dir": "I",
+"seq": 1,
+"stop": "002403",
+"data_timestamp": "2023-07-01T11:40:00+08:00"
+},
+{
+"co": "CTB",
+"route": "1",
+"dir": "I",
+"seq": 2,
+"stop": "002402",
+"data_timestamp": "2023-07-01T11:40:00+08:00"
+},
+{
+"co": "CTB",
+"route": "1",
+"dir": "I",
+"seq": 3,
+"stop": "002492",
+"data_timestamp": "2023-07-01T11:40:00+08:00"
+},
+{
+"co": "CTB",
+"route": "1",
+"dir": "I",
+"seq": 4,
+"stop": "002493",
+"data_timestamp": "2023-07-01T11:40:00+08:00"
+},
+{
+"co": "CTB",
+"route": "1",
+"dir": "I",
+"seq": 5,
+"stop": "002453",
+"data_timestamp": "2023-07-01T11:40:00+08:00"
+},
+{
+"co": "CTB",
+"route": "1",
+"dir": "I",
+"seq": 6,
+"stop": "002552",
+"data_timestamp": "2023-07-01T11:40:00+08:00"
+},
+{
+"co": "CTB",
+"route": "1",
+"dir": "I",
+"seq": 7,
+"stop": "002553",
+"data_timestamp": "2023-07-01T11:40:00+08:00"
+},
+{
+"co": "CTB",
+"route": "1",
+"dir": "I",
+"seq": 8,
+"stop": "002467",
+"data_timestamp": "2023-07-01T11:40:00+08:00"
+},
+{
+"co": "CTB",
+"route": "1",
+"dir": "I",
+"seq": 9,
+"stop": "002566",
+"data_timestamp": "2023-07-01T11:40:00+08:00"
+},
+{
+"co": "CTB",
+"route": "1",
+"dir": "I",
+"seq": 10,
+"stop": "002537",
+"data_timestamp": "2023-07-01T11:40:00+08:00"
+},
+{
+"co": "CTB",
+"route": "1",
+"dir": "I",
+"seq": 11,
+"stop": "002446",
+"data_timestamp": "2023-07-01T11:40:00+08:00"
+},
+{
+"co": "CTB",
+"route": "1",
+"dir": "I",
+"seq": 12,
+"stop": "002449",
+"data_timestamp": "2023-07-01T11:40:00+08:00"
+},
+{
+"co": "CTB",
+"route": "1",
+"dir": "I",
+"seq": 13,
+"stop": "001140",
+"data_timestamp": "2023-07-01T11:40:00+08:00"
+},
+{
+"co": "CTB",
+"route": "1",
+"dir": "I",
+"seq": 14,
+"stop": "001142",
+"data_timestamp": "2023-07-01T11:40:00+08:00"
+},
+{
+"co": "CTB",
+"route": "1",
+"dir": "I",
+"seq": 15,
+"stop": "001054",
+"data_timestamp": "2023-07-01T11:40:00+08:00"
+},
+{
+"co": "CTB",
+"route": "1",
+"dir": "I",
+"seq": 16,
+"stop": "001056",
+"data_timestamp": "2023-07-01T11:40:00+08:00"
+},
+{
+"co": "CTB",
+"route": "1",
+"dir": "I",
+"seq": 17,
+"stop": "001175",
+"data_timestamp": "2023-07-01T11:40:00+08:00"
+},
+{
+"co": "CTB",
+"route": "1",
+"dir": "I",
+"seq": 18,
+"stop": "001040",
+"data_timestamp": "2023-07-01T11:40:00+08:00"
+},
+{
+"co": "CTB",
+"route": "1",
+"dir": "I",
+"seq": 19,
+"stop": "001066",
+"data_timestamp": "2023-07-01T11:40:00+08:00"
+},
+{
+
+
+
+
+    4. Route API
+Description: This API takes a Citybus company ID and the company’s operating bus route
+number and returns the respective route information.
+Important Note: All New World First Bus routes already integrated into Citybus. Data of all
+routes are available under the {company_id} "CTB".
+HTTP Request:
+Endpoint route/{company_id}/{route}
+HTTP Method GET
+
+Sample Request:
+/v2/transport/citybus /route/CTB/107
+
+Sample Response:
+{
+"type": "Route",
+"version": "2.0",
+"generated_timestamp": "2023-07-01T11:40:48+08:00",
+"data": {
+"co": "CTB",
+"route": "107",
+"orig_en": "Wah Kwai Estate",
+"orig_tc": "華貴邨",
+"orig_sc": "华贵邨",
+"dest_en": "Kowloon Bay",
+"dest_tc": "九龍灣",
+"dest_sc": "九龙湾",
+"data_timestamp": "2023-07-01T11:40:00+08:00"
+}
+}
+
+
+
+
+5. Stop API
+Description: This API takes a 6-digit bus stop ID and returns the respective bus stop
+information.
+(Remark: To find the corresponding bus stop ID, user can query the "Route-Stop API")
+HTTP Request:
+Endpoint stop/{stop_id}
+HTTP Method GET
+
+Sample Request:
+/v2/transport/citybus/stop/002737
+
+Sample Response:
+{
+"type": "Stop",
+"version": "2.0",
+"generated_timestamp": "2023-07-01T11:40:48+08:00"
+,
+"data": {
+"stop": "002737",
+"name_tc": "砵典乍街, 德輔道中",
+"name_en": "Pottinger Street, Des Voeux Road Central",
+"name_sc": "砵典乍街, 德辅道中",
+"lat": 22.283948,
+"long": 114.156309,
+"data_timestamp": "2023-07-01T11:40:00+08:00"
+}
+}
+
+
+7. ETA API
+Description: This API takes a Citybus company ID, bus stop ID and the company’s operating
+bus route number; then it returns the “estimated time of arrival” (ETA) information of the
+respective route at that stop.
+(Remark: May return 1 or 2 ETA data and at most 3 ETA data will be provided.)
+
+HTTP Request:
+Endpoint eta/{company_id}/{stop_id}/{route}
+HTTP Method GET
+
+Sample Request:
+/v2/transport/citybus/eta/CTB/001145/11
+
+Sample Response:
+{
+"type": "ETA",
+"version": "2.0",
+"generated_timestamp": "2023-07-01T15:45:00+08:00",
+"data": [
+{
+"co": "CTB",
+"route": "11",
+"dir": "O",
+"seq": 1,
+"stop": "001145",
+"dest_tc": "渣甸山",
+"dest_sc": "渣甸山",
+"dest_en": "Jardine's Lookout",
+"eta_seq": 1,
+"eta": "2023-07-01T15:48:00+08:00",
+"rmk_tc": "",
+"rmk_sc": "",
+"rmk_en": "",
+"data_timestamp": "2023-07-01T15:44:33+08:00"
+},
+{
+"co": "CTB",
+"route": "11",
+"dir": "O",
+"seq": 1,
+"stop": "001145",
+"dest_tc": "渣甸山",
+"dest_sc": "渣甸山",
+"dest_en": "Jardine's Lookout",
+"eta_seq": 2,
+"eta": "2023-07-01T16:00:00+08:00",
+"rmk_tc": "",
+"rmk_sc": "",
+"rmk_en": "",
+"data_timestamp": "2023-07-01T15:44:33+08:00"
+},

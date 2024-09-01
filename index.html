@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CityBus 720 ETA Tracker</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+        h1 {
+            color: #003366;
+            text-align: center;
+        }
+        #reloadInfo {
+            background-color: #e6f3ff;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 20px;
+            text-align: center;
+        }
+        #results {
+            background-color: white;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .direction {
+            margin-bottom: 30px;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 20px;
+        }
+        h2 {
+            color: #003366;
+        }
+        h3 {
+            color: #0066cc;
+        }
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        li {
+            margin-bottom: 10px;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+        }
+        .previous-stop {
+            font-style: italic;
+            color: #666;
+        }
+        button {
+            display: block;
+            margin: 20px auto;
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #0066cc;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #004c99;
+        }
+        #displayRules {
+            background-color: #f0f0f0;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 20px;
+            font-size: 0.9em;
+            color: #333;
+        }
+        
+        /* Add new styles for the route input section */
+        #routeInput {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #e6f3ff;
+            border-radius: 5px;
+        }
+        #routeInput input, #routeInput select {
+            margin: 10px 0;
+            padding: 5px;
+            width: 100%;
+        }
+        #routeInput button {
+            margin: 10px 0;
+        }
+        
+        /* New styles for ETA layout */
+        .eta-container {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .next-bus {
+            flex: 1;
+            background-color: #e6f3ff;
+            padding: 15px;
+            border-radius: 5px;
+            margin-right: 10px;
+        }
+
+        .other-buses {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .eta-item {
+            background-color: #f0f0f0;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+
+        h4 {
+            margin-top: 0;
+            color: #003366;
+        }
+
+        .next-bus h4 {
+            font-size: 1.2em;
+        }
+
+        .eta-container p {
+            margin: 5px 0;
+        }
+
+        .next-bus-eta {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #0066cc;
+        }
+
+        .previous-stop-box {
+            background-color: #e6f3ff;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+
+        .previous-stop-info {
+            color: #0066cc;
+            margin: 5px 0;
+        }
+
+        /* New styles for bus on way alert */
+        .bus-on-way-alert {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+            animation: pulse 2s infinite;
+        }
+
+        .bus-on-way-alert i {
+            margin-right: 10px;
+        }
+
+        .bus-status {
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+
+        .bus-status.highlight {
+            color: white;
+        }
+
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7);
+            }
+            70% {
+                box-shadow: 0 0 0 10px rgba(76, 175, 80, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(76, 175, 80, 0);
+            }
+        }
+        
+        /* Add styles for estimated travel time text */
+        .estimated-travel-time {
+            text-decoration: underline;
+            cursor: help;
+        }
+    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+</head>
+<body>
+    <h1>CityBus 720 ETA Tracker</h1>
+    <button onclick="findBusInfo()">Refresh Now</button>
+    <div id="results"></div>
+    <div id="reloadInfo"></div>
+    <div id="displayRules"></div>
+    
+    <!-- Add a link to the new page -->
+    <div style="text-align: center; margin-top: 20px;">
+        <a href="find_route.html" style="text-decoration: none;">
+            <button style="background-color: #4CAF50;">Find Your Own Route</button>
+        </a>
+    </div>
+
+    <script src="bus_info.js"></script>
+</body>
+</html>
