@@ -10,6 +10,10 @@ const MAX_HISTORY_LENGTH = 9;
 
 async function findBusInfo() {
     const resultsDiv = document.getElementById('results');
+    if (!resultsDiv) {
+        console.error('Results div not found');
+        return;
+    }
     resultsDiv.innerHTML = '<p style="text-align: center;">Loading...</p>';
 
     try {
@@ -392,6 +396,10 @@ async function fetchETA(companyId, stopId, routeNumber, direction) {
 
 function updateReloadInfo() {
     const reloadInfoDiv = document.getElementById('reloadInfo');
+    if (!reloadInfoDiv) {
+        console.warn('Reload info div not found');
+        return;
+    }
     lastReloadTime = new Date();
     reloadInfoDiv.innerHTML = `
         <p>Last reload: ${lastReloadTime.toLocaleTimeString()}</p>
@@ -400,8 +408,11 @@ function updateReloadInfo() {
     
     // Update elapsed time every second
     setInterval(() => {
-        const elapsedSeconds = Math.floor((new Date() - lastReloadTime) / 1000);
-        document.getElementById('elapsedTime').textContent = elapsedSeconds;
+        const elapsedTimeSpan = document.getElementById('elapsedTime');
+        if (elapsedTimeSpan) {
+            const elapsedSeconds = Math.floor((new Date() - lastReloadTime) / 1000);
+            elapsedTimeSpan.textContent = elapsedSeconds;
+        }
     }, 1000);
 }
 
