@@ -276,8 +276,8 @@ function checkPreviousStop(previousStopETA, currentStopETA, stopName) {
 
     let status;
     if (currentETA < now) {
-        // If the current ETA is in the past, the bus has already left
-        status = `<p style="font-size: 0.9em; color: #666;">Bus has already left this stop.</p>`;
+        // If the current ETA is in the past, we don't output anything
+        status = '';
     } else if (!previousETA && previousStopETA.find(eta => eta.eta_seq === 2)) {
         // If ETA seq 1 is unavailable but seq 2 is available, the bus has left the previous stop
         status = `
@@ -286,8 +286,6 @@ function checkPreviousStop(previousStopETA, currentStopETA, stopName) {
                 <p class="bus-status highlight" style="font-size: 0.9em;">Bus has left the previous stop (${stopName}) and is on its way!</p>
             </div>
         `;
-        // Optionally play a sound
-        // playAlertSound();
     } else if (previousETA && previousETA < currentETA) {
         status = `<p class="bus-status" style="font-size: 0.9em; color: #666;">Bus has not yet left the previous stop: ${stopName}.</p>`;
     } else {
@@ -297,8 +295,6 @@ function checkPreviousStop(previousStopETA, currentStopETA, stopName) {
                 <p class="bus-status highlight" style="font-size: 0.9em;">Bus is likely on its way from the previous stop: ${stopName}!</p>
             </div>
         `;
-        // Optionally play a sound
-        // playAlertSound();
     }
 
     const estimatedTravelTime = calculateEstimatedTravelTime(previousStopETA, currentStopETA);
@@ -501,11 +497,13 @@ function checkDelay(currentETA, seqNumber, routeType) {
     }
 
     const delayInfo = [];
+    let lastDelayDiff = null;
+    let lastDelayText = '';
 
-    // Check delays for 1, 2, and 3 minutes ago
-    for (let minutesAgo = 1; minutesAgo <= 3; minutesAgo++) {
+    // Check delays for 3, 2, and 1 minutes ago
+    for (let minutesAgo = 3; minutesAgo >= 1; minutesAgo--) {
         if (etaHistory.length < 3 * minutesAgo) {
-            break; // Not enough history to compare for this time point
+            continue; // Not enough history to compare for this time point
         }
 
         const historicalEntry = etaHistory[etaHistory.length - (3 * minutesAgo)];
@@ -522,17 +520,31 @@ function checkDelay(currentETA, seqNumber, routeType) {
         const historicalETATime = new Date(historicalETA.eta);
         const delayDiff = currentETATime - historicalETATime;
 
-        let delayText = '';
-        if (delayDiff > 0) {
-            delayText = `<p class="delay-info" style="color: red; font-size: 0.8em;">Bus is delayed by ${formatTimeDifference(delayDiff)} compared to ${minutesAgo} minute${minutesAgo > 1 ? 's' : ''} ago</p>`;
-        } else if (delayDiff < 0) {
-            delayText = `<p class="delay-info" style="color: green; font-size: 0.8em;">Bus is ${formatTimeDifference(-delayDiff)} earlier compared to ${minutesAgo} minute${minutesAgo > 1 ? 's' : ''} ago</p>`;
-        }
-        // If delayDiff is 0, we don't add any text
+        // If this delay is different from the last one we recorded
+        if (delayDiff !== lastDelayDiff) {
+            const delayMinutes = Math.floor(Math.abs(delayDiff) / 60000);
+            const delaySeconds = Math.floor((Math.abs(delayDiff) % 60000) / 1000);
+            let delayString = '';
+            if (delayMinutes > 0) {
+                delayString = `${delayMinutes} min ${delaySeconds} seconds`;
+            } else {
+                delayString = `${delaySeconds} seconds`;
+            }
 
-        if (delayText) {
-            delayInfo.push(delayText);
+            if (delayDiff > 0) {
+                lastDelayText = `<p class="delay-info" style="color: red; font-size: 0.8em;">Delayed ${delayString} (compared to ${minutesAgo} minute${minutesAgo > 1 ? 's' : ''} ago)</p>`;
+            } else if (delayDiff < 0) {
+                lastDelayText = `<p class="delay-info" style="color: green; font-size: 0.8em;">Earlier by ${delayString} (compared to ${minutesAgo} minute${minutesAgo > 1 ? 's' : ''} ago)</p>`;
+            }
+
+            // Only add to delayInfo if there's actually a delay
+            if (delayDiff !== 0) {
+                delayInfo.push(lastDelayText);
+            }
+            
+            lastDelayDiff = delayDiff;
         }
+        // If the delay is the same as the previous one, we skip it
     }
 
     return delayInfo.join('');
