@@ -157,26 +157,54 @@ function formatETAList(etaData, previousStopInfo, isOutbound) {
     etaData.sort((a, b) => a.eta_seq - b.eta_seq);
 
     // Process ETA 1 (next bus) first
-    const nextBus = etaData.find(eta => eta.eta_seq === 1);
-    if (nextBus) {
-        const etaTime = new Date(nextBus.eta);
-        const etaId = `eta-${nextBus.eta_seq}-${etaTime.getTime()}`;
+    let nextBus = etaData.find(eta => eta.eta_seq === 1);
+    const routeType = isOutbound ? 'outbound' : 'inbound';
+
+    let lastAvailableETA = null;
+    if (!nextBus && etaHistory.length > 0) {
+        // Search for the last available ETA seq 1 in the history
+        for (let i = etaHistory.length - 1; i >= 0; i--) {
+            const historyEntry = etaHistory[i].data[routeType];
+            const historicalETA = historyEntry.find(eta => eta.eta_seq === 1);
+            if (historicalETA) {
+                lastAvailableETA = historicalETA;
+                break;
+            }
+        }
+    }
+
+    if (nextBus || lastAvailableETA) {
+        const busData = nextBus || lastAvailableETA;
+        const etaTime = new Date(busData.eta);
+        const etaId = `eta-${busData.eta_seq}-${etaTime.getTime()}`;
         const timeDiff = etaTime - now;
-        
+
         let statusHtml;
-        if (timeDiff < 0) {
-            statusHtml = `<p class="next-bus-eta">Bus has left <span id="${etaId}-ago">${formatTimeDifference(-timeDiff)}</span> ago</p>`;
+        if (!nextBus || timeDiff < 0) {
+            // If there's no current ETA seq 1 or the time difference is negative, the bus has left
+            const timeSinceLeft = nextBus ? -timeDiff : now - etaTime;
+            statusHtml = `<p class="next-bus-eta">Bus has left <span id="${etaId}-ago">${formatTimeDifference(timeSinceLeft)}</span> ago</p>`;
             countdownIntervals.push(setInterval(() => updateTimeSinceBusLeft(etaId, etaTime), 1000));
         } else {
             statusHtml = `
-                <p class="next-bus-eta" style="font-size: 1.5em;"><span id="${etaId}"></span></p>
-                <p style="font-size: 0.9em;">@ ${formatTime12H(etaTime)}</p>
+                <div class="flex items-center justify-start w-full gap-1.5 count-down-main">
+                    <div class="timer">
+                        <div id="${etaId}-minutes" class="countdown-element minutes font-manrope font-semibold text-lg text-0066cc text-center"></div>
+                        <div class="countdown-label">Minutes</div>
+                    </div>
+                    <div class="separator">:</div>
+                    <div class="timer">
+                        <div id="${etaId}-seconds" class="countdown-element seconds sec font-manrope font-semibold text-lg text-0066cc text-center"></div>
+                        <div class="countdown-label">Seconds</div>
+                    </div>
+                </div>
+                <p>@${formatTime12H(etaTime)}</p>
             `;
             updateCountdown(etaId, etaTime);
             countdownIntervals.push(setInterval(() => updateCountdown(etaId, etaTime), 1000));
         }
 
-        const delayInfo = checkDelay(nextBus, 1, isOutbound ? 'outbound' : 'inbound');
+        const delayInfo = checkDelay(busData, 1, routeType);
 
         // Determine the correct destination based on the route direction
         const destination = isOutbound ? "Central" : "Taikoo Shing";
@@ -200,21 +228,21 @@ function formatETAList(etaData, previousStopInfo, isOutbound) {
         const etaTime = new Date(eta.eta);
         const etaId = `eta-${eta.eta_seq}-${etaTime.getTime()}`;
         const timeDiff = etaTime - now;
-        
+
         let statusHtml;
         if (timeDiff < 0) {
             statusHtml = `<p>Bus has left <span id="${etaId}-ago">${formatTimeDifference(-timeDiff)}</span> ago</p>`;
             countdownIntervals.push(setInterval(() => updateTimeSinceBusLeft(etaId, etaTime), 1000));
         } else {
             statusHtml = `
-                <p><span id="${etaId}"></span></p>
+                <p><span id="${etaId}" class="other-bus-countdown"></span></p>
                 <p style="font-size: 0.9em;">@ ${formatTime12H(etaTime)}</p>
             `;
-            updateCountdown(etaId, etaTime);
-            countdownIntervals.push(setInterval(() => updateCountdown(etaId, etaTime), 1000));
+            updateOtherBusCountdown(etaId, etaTime);
+            countdownIntervals.push(setInterval(() => updateOtherBusCountdown(etaId, etaTime), 1000));
         }
 
-        const delayInfo = checkDelay(eta, eta.eta_seq, isOutbound ? 'outbound' : 'inbound');
+        const delayInfo = checkDelay(eta, eta.eta_seq, routeType);
 
         // Determine the correct destination based on the route direction
         const destination = isOutbound ? "Central" : "Taikoo Shing";
@@ -234,21 +262,24 @@ function formatETAList(etaData, previousStopInfo, isOutbound) {
 }
 
 function updateCountdown(etaId, etaTime) {
-    const countdownElement = document.getElementById(etaId);
-    if (countdownElement) {
-        const now = new Date();
-        const timeDiff = etaTime - now;
-        
-        if (timeDiff < 0) {
-            countdownElement.textContent = `Bus has left ${formatTimeDifference(-timeDiff)} ago`;
-            // Switch to updating time since bus left
-            clearInterval(countdownIntervals.find(interval => interval._id === etaId));
-            countdownIntervals.push(setInterval(() => updateTimeSinceBusLeft(etaId, etaTime), 1000));
-        } else {
-            const minutes = Math.floor(timeDiff / 60000);
-            const seconds = Math.floor((timeDiff % 60000) / 1000);
-            countdownElement.textContent = `${minutes} min ${seconds} sec`;
-        }
+    const now = new Date();
+    const timeDiff = etaTime - now;
+
+    if (timeDiff < 0) {
+        clearInterval(countdownIntervals.find(interval => interval._id === etaId));
+        countdownIntervals.push(setInterval(() => updateTimeSinceBusLeft(etaId, etaTime), 1000));
+        return;
+    }
+
+    const minutes = Math.floor(timeDiff / 60000);
+    const seconds = Math.floor((timeDiff % 60000) / 1000);
+
+    const minutesElement = document.getElementById(`${etaId}-minutes`);
+    const secondsElement = document.getElementById(`${etaId}-seconds`);
+
+    if (minutesElement && secondsElement) {
+        minutesElement.innerHTML = minutes < 10 ? `0${minutes}` : minutes;
+        secondsElement.innerHTML = seconds < 10 ? `0${seconds}` : seconds;
     }
 }
 
@@ -557,7 +588,7 @@ function addButtonStyles() {
             background-color: white;
             font-family: Arial, sans-serif;
             margin: 0;
-            padding: 20px;
+            padding: 5px;
         }
 
         .button-50 {
@@ -612,22 +643,22 @@ function addButtonStyles() {
         }
 
         .card {
-            border: 1px solid #ddd;
+            border: none; /* Remove border */
             border-radius: 8px;
-            margin: 20px 0;
+            margin: 5px 0; /* Reduce spacing between cards */
             overflow: hidden;
             background-color: #fff;
             width: 100%;
         }
 
         .card-header {
-            background-color: #f5f5f5;
-            padding: 15px;
+            padding: 5px; /* Changed from 10px to 5px */
             border-bottom: 1px solid #ddd;
+            background-color: transparent; /* Remove background color */
         }
 
         .card-body {
-            padding: 15px;
+            padding: 5px; /* Changed from 15px to 5px */
         }
 
         .eta-wrapper {
@@ -657,12 +688,14 @@ function addButtonStyles() {
         .card-header h2 {
             font-size: 1.2em;
             line-height: 1.2;
-            margin-bottom: 5px;
+            margin-bottom: 2px;
         }
 
         .card-header h3 {
             font-size: 1em;
             line-height: 1.2;
+            margin-top: 2px;
+            color: #0066cc; /* Same color as "Cityplaza, Taikoo Shing Road" */
         }
 
         .eta-container {
@@ -674,9 +707,9 @@ function addButtonStyles() {
         .next-bus {
             width: 65%;
             background-color: white;
-            padding: 15px;
+            padding: 10px;
             border-radius: 5px;
-            margin-right: 10px;
+            margin-right: 5px;
             box-shadow: 0 4px 8px rgba(0,0,0,0.2);
             border: 1px solid black;
         }
@@ -685,14 +718,48 @@ function addButtonStyles() {
             width: 30%;
             display: flex;
             flex-direction: column;
+            margin-left: 10px; /* Add margin instead of padding */
         }
 
         .eta-item {
             background-color: white;
-            padding: 10px;
+            padding: 5px;
             border-radius: 5px;
-            margin-bottom: 10px;
+            margin-bottom: 5px;
             box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .count-down-main {
+            display: flex;
+            align-items: center;
+            justify-content: flex-start; /* Align to the left */
+        }
+
+        .timer {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid #0066cc; /* Same color as "Cityplaza, Taikoo Shing Road" */
+            border-radius: 12px; /* Rounded corners */
+            padding: 5px; /* Smaller padding */
+            margin: 0 5px; /* Margin between timers */
+        }
+
+        .countdown-element {
+            font-size: 1.5em; /* Smaller font size */
+            color: #0066cc; /* Same color as "Cityplaza, Taikoo Shing Road" */
+        }
+
+        .countdown-label {
+            font-size: 0.8em; /* Smaller font size */
+            color: #0066cc; /* Same color as "Cityplaza, Taikoo Shing Road" */
+        }
+
+        .separator {
+            font-size: 1.5em; /* Smaller font size */
+            color: #0066cc; /* Same color as "Cityplaza, Taikoo Shing Road" */
+            margin: 0 5px; /* Margin around separator */
         }
     `;
     document.head.appendChild(style);
@@ -702,3 +769,22 @@ document.addEventListener('DOMContentLoaded', () => {
     addButtonStyles();
     initializePage();
 });
+
+function updateOtherBusCountdown(etaId, etaTime) {
+    const now = new Date();
+    const timeDiff = etaTime - now;
+
+    if (timeDiff < 0) {
+        clearInterval(countdownIntervals.find(interval => interval._id === etaId));
+        countdownIntervals.push(setInterval(() => updateTimeSinceBusLeft(etaId, etaTime), 1000));
+        return;
+    }
+
+    const minutes = Math.floor(timeDiff / 60000);
+    const seconds = Math.floor((timeDiff % 60000) / 1000);
+
+    const countdownElement = document.getElementById(etaId);
+    if (countdownElement) {
+        countdownElement.textContent = `${minutes} min ${seconds} sec`;
+    }
+}

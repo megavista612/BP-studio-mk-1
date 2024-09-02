@@ -9,8 +9,8 @@
             font-family: ITCAvantGardeStd-Bk, Arial, sans-serif;
             max-width: 800px;
             margin: 0 auto;
-            padding: 20px;
-            background-color: #f0f0f0;
+            padding: 5px; /* Reduced from 10px to 5px */
+            background-color: #fafafa; /* Changed from #f0f0f0 to a lighter shade */
             color: #333;
             position: relative;
         }
@@ -41,7 +41,7 @@
             text-align: center;
         }
         #results {
-            background-color: white;
+            background-color: #fcfcfc; /* Changed from white to a very light grey */
             padding: 20px;
             border-radius: 5px;
             margin-top: 0; /* Remove top blank space */
@@ -108,14 +108,15 @@
         .card {
             border: 1px solid #ddd;
             border-radius: 8px;
-            margin: 20px 0;
+            margin: 5px 0; /* Reduced from 10px 0 to 5px 0 */
             overflow: hidden;
-            background-color: #fff;
+            background-color: #fcfcfc; /* Changed from #fdfdfd to #fcfcfc */
             width: 100%;
         }
 
         .card-body {
-            padding: 15px;
+            padding: 5px; /* Changed from 15px to 5px */
+            background-color: #fcfcfc; /* Changed from #fdfdfd to #fcfcfc */
         }
 
         .eta-container {
@@ -127,9 +128,9 @@
         .next-bus {
             width: 65%;
             background-color: white;
-            padding: 15px;
+            padding: 10px; /* Reduced from 15px to 10px */
             border-radius: 5px;
-            margin-right: 10px;
+            margin-right: 2%; /* Reduced from 10px to maintain layout */
             box-shadow: 0 4px 8px rgba(0,0,0,0.2);
             border: 1px solid black;
         }
@@ -138,13 +139,14 @@
             width: 30%;
             display: flex;
             flex-direction: column;
+            margin-left: 10px; /* Add margin instead of padding */
         }
 
         .eta-item {
             background-color: white;
-            padding: 10px;
+            padding: 8px; /* Reduced from 10px to 8px */
             border-radius: 5px;
-            margin-bottom: 10px;
+            margin-bottom: 8px; /* Reduced from 10px to 8px */
             box-shadow: 0 4px 8px rgba(0,0,0,0.2);
         }
 
@@ -235,6 +237,17 @@
         .card-header h3 .fas {
             margin-right: 5px;
             font-size: 0.9em;
+        }
+
+        .card-header {
+            background-color: #fcfcfc; /* Changed from #fdfdfd to #fcfcfc */
+            padding: 5px; /* Changed from 10px to 5px */
+            border-bottom: 1px solid #ddd;
+        }
+
+        .card-body {
+            padding: 5px; /* Changed from 15px to 5px */
+            background-color: #fcfcfc; /* Changed from #fdfdfd to #fcfcfc */
         }
     </style>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
