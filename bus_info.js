@@ -48,7 +48,11 @@ async function fetchAndDisplayETA() {
         const wanChaiPreviousETA = await fetchETA('CTB', '002423', '720', 'I');
 
         const currentHour = new Date().getHours();
-        const isWorkTime = currentHour >= 7 && currentHour < 13;
+        const currentDay = new Date().getDay();
+        const isWeekend = (currentDay === 6 || currentDay === 0); // Saturday or Sunday
+        const isAfternoonOrEvening = (currentHour >= 15 && currentHour <= 23);
+
+        const isWorkTime = !isWeekend || (isWeekend && isAfternoonOrEvening);
 
         // Remove duplicates from ETAs
         const uniqueOutboundETA = removeDuplicateETAs(outboundETA);
@@ -62,43 +66,58 @@ async function fetchAndDisplayETA() {
             wanChai: uniqueWanChaiETA
         });
 
-        const outboundSection = `
-            <div class="direction">
-                <h2>Route 720 Outbound (towards Central)</h2>
-                <h3>Cityplaza, Taikoo Shing Road (Stop ID: 001379)</h3>
-                ${formatETAList(uniqueOutboundETA, checkPreviousStop(outboundPreviousETA, uniqueOutboundETA, "Kao Shan Terrace, Taikoo Shing Road"), true)}
-            </div>
-        `;
+        const sections = [
+            {
+                title: "Route 720 Outbound (towards Central)",
+                subtitle: "Cityplaza, Taikoo Shing Road",
+                icon: "fas fa-building",
+                etaData: uniqueOutboundETA,
+                previousStopETA: outboundPreviousETA,
+                previousStopName: "Kao Shan Terrace, Taikoo Shing Road",
+                isOutbound: true
+            },
+            {
+                title: "Route 720 Inbound (towards Taikoo Shing)",
+                subtitle: "Jardine House, Connaught Road Central",
+                icon: "fas fa-landmark",
+                etaData: uniqueInboundETA,
+                previousStopETA: inboundPreviousETA,
+                previousStopName: "Douglas Street, Des Voeux Road Central",
+                isOutbound: false
+            },
+            {
+                title: "Route 720 From Wan Chai Ferry Pier (towards Taikoo Shing)",
+                subtitle: "Wan Chai Ferry Pier",
+                icon: "fas fa-ferry",
+                etaData: uniqueWanChaiETA,
+                previousStopETA: wanChaiPreviousETA,
+                previousStopName: "Convention Avenue",
+                isOutbound: false
+            }
+        ];
 
-        const inboundSection = `
-            <div class="direction">
-                <h2>Route 720 Inbound (towards Taikoo Shing)</h2>
-                <h3>Jardine House, Connaught Road Central (Stop ID: 001030)</h3>
-                ${formatETAList(uniqueInboundETA, checkPreviousStop(inboundPreviousETA, uniqueInboundETA, "Douglas Street, Des Voeux Road Central"), false)}
+        const sectionsHtml = sections.map(section => `
+            <div class="card">
+                <div class="card-header">
+                    <h2>${section.title}</h2>
+                    <h3><i class="${section.icon}"></i> ${section.subtitle}</h3>
+                </div>
+                <div class="card-body">
+                    ${formatETAList(section.etaData, checkPreviousStop(section.previousStopETA, section.etaData, section.previousStopName), section.isOutbound)}
+                </div>
             </div>
-        `;
-
-        const wanChaiSection = `
-            <div class="direction">
-                <h2>Route 720 From Wan Chai Ferry Pier (towards Taikoo Shing)</h2>
-                <h3>Wan Chai Ferry Pier (Stop ID: 002559)</h3>
-                ${formatETAList(uniqueWanChaiETA, checkPreviousStop(wanChaiPreviousETA, uniqueWanChaiETA, "Convention Avenue"), false)}
-            </div>
-        `;
+        `).join('');
 
         // Display results
         resultsDiv.innerHTML = `
-            <p style="text-align: center; font-weight: bold; color: ${isWorkTime ? 'blue' : 'green'};">
-                ${isWorkTime ? "It's time to go to work!" : "It's time to go home!"}
-            </p>
-            ${outboundSection}
-            ${inboundSection}
-            ${wanChaiSection}
+            <div class="eta-wrapper">
+                ${sectionsHtml}
+            </div>
         `;
 
         // Add last updated time
         const lastUpdated = new Date().toLocaleTimeString();
-        resultsDiv.innerHTML += `<p style="text-align: center;">Last updated: ${lastUpdated}</p>`;
+        resultsDiv.innerHTML += `<p class="last-updated">Last updated: ${lastUpdated}</p>`;
 
         console.log("ETA information displayed and updated");
     } catch (error) {
@@ -145,9 +164,11 @@ function formatETAList(etaData, previousStopInfo, isOutbound) {
             statusHtml = `<p class="next-bus-eta">Bus has left <span id="${etaId}-ago">${formatTimeDifference(-timeDiff)}</span> ago</p>`;
             countdownIntervals.push(setInterval(() => updateTimeSinceBusLeft(etaId, etaTime), 1000));
         } else {
-            const minutes = Math.floor(timeDiff / 60000);
-            const seconds = Math.floor((timeDiff % 60000) / 1000);
-            statusHtml = `<p class="next-bus-eta">Arriving in <span id="${etaId}">${minutes} min ${seconds} seconds</span></p>`;
+            statusHtml = `
+                <p class="next-bus-eta" style="font-size: 1.5em;"><span id="${etaId}"></span></p>
+                <p style="font-size: 0.9em;">@ ${formatTime12H(etaTime)}</p>
+            `;
+            updateCountdown(etaId, etaTime);
             countdownIntervals.push(setInterval(() => updateCountdown(etaId, etaTime), 1000));
         }
 
@@ -160,9 +181,7 @@ function formatETAList(etaData, previousStopInfo, isOutbound) {
             <div class="next-bus">
                 <h4>Next Bus</h4>
                 ${statusHtml}
-                <p>(${formatTime12H(etaTime)})</p>
                 <p>To: ${destination}</p>
-                <p>Remarks: ${nextBus.rmk_en || 'N/A'}</p>
                 ${delayInfo}
                 <div class="previous-stop-info">
                     ${previousStopInfo}
@@ -183,9 +202,11 @@ function formatETAList(etaData, previousStopInfo, isOutbound) {
             statusHtml = `<p>Bus has left <span id="${etaId}-ago">${formatTimeDifference(-timeDiff)}</span> ago</p>`;
             countdownIntervals.push(setInterval(() => updateTimeSinceBusLeft(etaId, etaTime), 1000));
         } else {
-            const minutes = Math.floor(timeDiff / 60000);
-            const seconds = Math.floor((timeDiff % 60000) / 1000);
-            statusHtml = `<p>Arriving in <span id="${etaId}">${minutes} min ${seconds} seconds</span></p>`;
+            statusHtml = `
+                <p><span id="${etaId}"></span></p>
+                <p style="font-size: 0.9em;">@ ${formatTime12H(etaTime)}</p>
+            `;
+            updateCountdown(etaId, etaTime);
             countdownIntervals.push(setInterval(() => updateCountdown(etaId, etaTime), 1000));
         }
 
@@ -198,9 +219,7 @@ function formatETAList(etaData, previousStopInfo, isOutbound) {
             <div class="eta-item">
                 <h4>ETA ${eta.eta_seq}</h4>
                 ${statusHtml}
-                <p>(${formatTime12H(etaTime)})</p>
                 <p>To: ${destination}</p>
-                <p>Remarks: ${eta.rmk_en || 'N/A'}</p>
                 ${delayInfo}
             </div>
         `;
@@ -210,17 +229,6 @@ function formatETAList(etaData, previousStopInfo, isOutbound) {
     return etaHtml;
 }
 
-// Add this new function to update the time since the bus left
-function updateTimeSinceBusLeft(etaId, etaTime) {
-    const countdownElement = document.getElementById(`${etaId}-ago`);
-    if (countdownElement) {
-        const now = new Date();
-        const timeDiff = now - etaTime;
-        countdownElement.textContent = formatTimeDifference(timeDiff);
-    }
-}
-
-// Modify the existing updateCountdown function
 function updateCountdown(etaId, etaTime) {
     const countdownElement = document.getElementById(etaId);
     if (countdownElement) {
@@ -235,8 +243,17 @@ function updateCountdown(etaId, etaTime) {
         } else {
             const minutes = Math.floor(timeDiff / 60000);
             const seconds = Math.floor((timeDiff % 60000) / 1000);
-            countdownElement.textContent = `${minutes} min ${seconds} seconds`;
+            countdownElement.textContent = `${minutes} min ${seconds} sec`;
         }
+    }
+}
+
+function updateTimeSinceBusLeft(etaId, etaTime) {
+    const countdownElement = document.getElementById(`${etaId}-ago`);
+    if (countdownElement) {
+        const now = new Date();
+        const timeDiff = now - etaTime;
+        countdownElement.textContent = formatTimeDifference(timeDiff);
     }
 }
 
@@ -256,24 +273,24 @@ function checkPreviousStop(previousStopETA, currentStopETA, stopName) {
     let status;
     if (currentETA < now) {
         // If the current ETA is in the past, the bus has already left
-        status = `<p>Bus has already left this stop.</p>`;
+        status = `<p style="font-size: 0.9em; color: #666;">Bus has already left this stop.</p>`;
     } else if (!previousETA && previousStopETA.find(eta => eta.eta_seq === 2)) {
         // If ETA seq 1 is unavailable but seq 2 is available, the bus has left the previous stop
         status = `
             <div class="bus-on-way-alert">
                 <i class="fas fa-bus"></i>
-                <p class="bus-status highlight">Bus has left the previous stop (${stopName}) and is on its way!</p>
+                <p class="bus-status highlight" style="font-size: 0.9em;">Bus has left the previous stop (${stopName}) and is on its way!</p>
             </div>
         `;
         // Optionally play a sound
         // playAlertSound();
     } else if (previousETA && previousETA < currentETA) {
-        status = `<p class="bus-status">Bus has not yet left the previous stop: ${stopName}.</p>`;
+        status = `<p class="bus-status" style="font-size: 0.9em; color: #666;">Bus has not yet left the previous stop: ${stopName}.</p>`;
     } else {
         status = `
             <div class="bus-on-way-alert">
                 <i class="fas fa-bus"></i>
-                <p class="bus-status highlight">Bus is likely on its way from the previous stop: ${stopName}!</p>
+                <p class="bus-status highlight" style="font-size: 0.9em;">Bus is likely on its way from the previous stop: ${stopName}!</p>
             </div>
         `;
         // Optionally play a sound
@@ -285,7 +302,7 @@ function checkPreviousStop(previousStopETA, currentStopETA, stopName) {
     
     return `
         ${status}
-        <p>
+        <p style="font-size: 0.9em; color: #666;">
             <span class="estimated-travel-time" onmouseover="showETAInfo(this)" onmouseout="hideETAInfo()" data-eta-info='${etaInfo}'>
                 Estimated travel time from previous stop: ${estimatedTravelTime}
             </span>
@@ -386,18 +403,6 @@ function updateReloadInfo() {
         const elapsedSeconds = Math.floor((new Date() - lastReloadTime) / 1000);
         document.getElementById('elapsedTime').textContent = elapsedSeconds;
     }, 1000);
-
-    // Add display rules explanation
-    const displayRulesDiv = document.getElementById('displayRules');
-    displayRulesDiv.innerHTML = `
-        <h3>Display Rules:</h3>
-        <p>The order of displayed routes changes based on the time of day:</p>
-        <ul>
-            <li>From 07:00 to 12:59: Route 720 Outbound (towards Central) is shown first, followed by Inbound (towards Taikoo Shing).</li>
-            <li>From 13:00 to 06:59: Route 720 Inbound (towards Taikoo Shing) is shown first, followed by Outbound (towards Central).</li>
-        </ul>
-        <p>This arrangement is designed to prioritize the direction most likely needed based on typical work schedules.</p>
-    `;
 }
 
 function formatTime12H(date) {
@@ -453,11 +458,17 @@ function positionPopup(element) {
 
 // Add this new function at the end of the file
 function initializePage() {
+   
+
+    // Call findBusInfo to initialize the page content
     findBusInfo();
 }
 
 // Add an event listener for when the DOM content is loaded
-document.addEventListener('DOMContentLoaded', initializePage);
+document.addEventListener('DOMContentLoaded', () => {
+    addButtonStyles();
+    initializePage();
+});
 
 function logETAInfo(etaData) {
     etaHistory.push({
@@ -473,6 +484,11 @@ function logETAInfo(etaData) {
 }
 
 function checkDelay(currentETA, seqNumber, routeType) {
+    // Only check delay for ETA1
+    if (seqNumber !== 1) {
+        return '';
+    }
+
     const delayInfo = [];
 
     // Check delays for 1, 2, and 3 minutes ago
@@ -496,16 +512,170 @@ function checkDelay(currentETA, seqNumber, routeType) {
         const delayDiff = currentETATime - historicalETATime;
 
         let delayText = '';
-        if (delayDiff === 0) {
-            delayText = `<p class="delay-info">No change in ETA compared to ${minutesAgo} minute${minutesAgo > 1 ? 's' : ''} ago</p>`;
-        } else if (delayDiff > 0) {
-            delayText = `<p class="delay-info" style="color: red;">Bus is delayed by ${formatTimeDifference(delayDiff)} compared to ${minutesAgo} minute${minutesAgo > 1 ? 's' : ''} ago</p>`;
-        } else {
-            delayText = `<p class="delay-info" style="color: green;">Bus is ${formatTimeDifference(-delayDiff)} earlier compared to ${minutesAgo} minute${minutesAgo > 1 ? 's' : ''} ago</p>`;
+        if (delayDiff > 0) {
+            delayText = `<p class="delay-info" style="color: red; font-size: 0.8em;">Bus is delayed by ${formatTimeDifference(delayDiff)} compared to ${minutesAgo} minute${minutesAgo > 1 ? 's' : ''} ago</p>`;
+        } else if (delayDiff < 0) {
+            delayText = `<p class="delay-info" style="color: green; font-size: 0.8em;">Bus is ${formatTimeDifference(-delayDiff)} earlier compared to ${minutesAgo} minute${minutesAgo > 1 ? 's' : ''} ago</p>`;
         }
+        // If delayDiff is 0, we don't add any text
 
-        delayInfo.push(delayText);
+        if (delayText) {
+            delayInfo.push(delayText);
+        }
     }
 
     return delayInfo.join('');
 }
+
+function addButtonStyles() {
+    const style = document.createElement('style');
+    style.textContent = `
+        body {
+            background-color: white;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .button-50 {
+            appearance: button;
+            background-color: #000;
+            background-image: none;
+            border: 1px solid #000;
+            border-radius: 4px;
+            box-shadow: #fff 4px 4px 0 0,#000 4px 4px 0 1px;
+            box-sizing: border-box;
+            color: #fff;
+            cursor: pointer;
+            display: inline-block;
+            font-family: ITCAvantGardeStd-Bk,Arial,sans-serif;
+            font-size: 14px;
+            font-weight: 400;
+            line-height: 20px;
+            margin: 0 5px 10px 0;
+            overflow: visible;
+            padding: 12px 40px;
+            text-align: center;
+            text-transform: none;
+            touch-action: manipulation;
+            user-select: none;
+            -webkit-user-select: none;
+            vertical-align: middle;
+            white-space: nowrap;
+        }
+
+        .button-50:focus {
+            text-decoration: none;
+        }
+
+        .button-50:hover {
+            text-decoration: none;
+        }
+
+        .button-50:active {
+            box-shadow: rgba(0, 0, 0, .125) 0 3px 5px inset;
+            outline: 0;
+        }
+
+        .button-50:not([disabled]):active {
+            box-shadow: #fff 2px 2px 0 0, #000 2px 2px 0 1px;
+            transform: translate(2px, 2px);
+        }
+
+        @media (min-width: 768px) {
+            .button-50 {
+                padding: 12px 50px;
+            }
+        }
+
+        .card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            margin: 20px 0;
+            overflow: hidden;
+            background-color: #fff;
+            width: 100%;
+        }
+
+        .card-header {
+            background-color: #f5f5f5;
+            padding: 15px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .card-body {
+            padding: 15px;
+        }
+
+        .eta-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            width: 100%;
+        }
+
+        .time-message {
+            font-size: 1.2em;
+            margin-bottom: 20px;
+        }
+
+        .last-updated {
+            margin-top: 20px;
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        #reloadInfo {
+            margin-top: 20px;
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .card-header h2 {
+            font-size: 1.2em;
+            line-height: 1.2;
+            margin-bottom: 5px;
+        }
+
+        .card-header h3 {
+            font-size: 1em;
+            line-height: 1.2;
+        }
+
+        .eta-container {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+        }
+
+        .next-bus {
+            width: 65%;
+            background-color: white;
+            padding: 15px;
+            border-radius: 5px;
+            margin-right: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            border: 1px solid black;
+        }
+
+        .other-buses {
+            width: 30%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .eta-item {
+            background-color: white;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+    `;
+    document.head.appendChild(style);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    addButtonStyles();
+    initializePage();
+});
