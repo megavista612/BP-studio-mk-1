@@ -8,6 +8,10 @@ const UPDATE_INTERVAL = 20000; // 20 seconds
 let etaHistory = [];
 const MAX_HISTORY_LENGTH = 9;
 
+// Add these variables at the top of the file
+let mapApiLoaded = false;
+let mapInitialized = false;
+
 async function findBusInfo() {
     const resultsDiv = document.getElementById('results');
     if (!resultsDiv) {
@@ -51,13 +55,6 @@ async function fetchAndDisplayETA() {
         const wanChaiETA = await fetchETA('CTB', '002559', '720', 'I');
         const wanChaiPreviousETA = await fetchETA('CTB', '002423', '720', 'I');
 
-        const currentHour = new Date().getHours();
-        const currentDay = new Date().getDay();
-        const isWeekend = (currentDay === 6 || currentDay === 0); // Saturday or Sunday
-        const isAfternoonOrEvening = (currentHour >= 15 && currentHour <= 23);
-
-        const isWorkTime = !isWeekend || (isWeekend && isAfternoonOrEvening);
-
         // Remove duplicates from ETAs
         const uniqueOutboundETA = removeDuplicateETAs(outboundETA);
         const uniqueInboundETA = removeDuplicateETAs(inboundETA);
@@ -99,6 +96,17 @@ async function fetchAndDisplayETA() {
                 isOutbound: false
             }
         ];
+
+        // Check if it's after 18:00 from Monday to Friday
+        const now = new Date();
+        const isWeekday = now.getDay() >= 1 && now.getDay() <= 5;
+        const isAfter1800 = now.getHours() >= 18;
+
+        if (isWeekday && isAfter1800) {
+            // Move the inbound route to the first position
+            const inboundSection = sections.splice(1, 1)[0];
+            sections.unshift(inboundSection);
+        }
 
         const sectionsHtml = sections.map(section => `
             <div class="card">
@@ -218,6 +226,7 @@ function formatETAList(etaData, previousStopInfo, isOutbound) {
                 <div class="previous-stop-info">
                     ${previousStopInfo}
                 </div>
+                ${isOutbound ? '' : '<button onclick="showDrivingTime()" class="button-50 small-button">Show est. driving time</button>'}
             </div>
         `;
     }
@@ -761,6 +770,27 @@ function addButtonStyles() {
             color: #0066cc; /* Same color as "Cityplaza, Taikoo Shing Road" */
             margin: 0 5px; /* Margin around separator */
         }
+
+        .button-50 {
+            background-color: #0066cc; /* Change to blue color */
+            border: 1px solid #0066cc;
+            color: #fff;
+            font-size: 12px; /* Make the font smaller */
+            padding: 8px 16px; /* Make the button smaller */
+        }
+
+        .button-50:hover {
+            background-color: #0056b3; /* Darker blue on hover */
+        }
+
+        .button-50:active {
+            background-color: #004c99; /* Even darker blue when active */
+        }
+
+        .small-button {
+            font-size: 10px; /* Even smaller font for 'Show Details' and 'Close' buttons */
+            padding: 6px 12px; /* Smaller padding for these buttons */
+        }
     `;
     document.head.appendChild(style);
 }
@@ -786,5 +816,125 @@ function updateOtherBusCountdown(etaId, etaTime) {
     const countdownElement = document.getElementById(etaId);
     if (countdownElement) {
         countdownElement.textContent = `${minutes} min ${seconds} sec`;
+    }
+}
+
+// Add this new function at the end of the file
+function showDrivingTime() {
+    if (document.getElementById('drivingTimePopup')) {
+        // If the popup is already open, just return
+        return;
+    }
+
+    const popupHtml = `
+        <div id="drivingTimePopup" style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border: 1px solid black; z-index: 1000; max-width: 80%; max-height: 80%; overflow: auto;">
+            <h2>Estimated Journey Time</h2>
+            <div id="eta"></div>
+            <div id="note"></div>
+            <button id="showDetailsBtn" onclick="toggleDetails()" class="button-50 small-button" style="display: none;">Show Details</button>
+            <div id="map" style="height: 400px; width: 100%; display: none;"></div>
+            <div id="directions-panel" style="display: none;"></div>
+            <button onclick="closeDrivingTimePopup()" class="button-50 small-button">Close</button>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', popupHtml);
+
+    if (!mapApiLoaded) {
+        // Load Google Maps API script only if it hasn't been loaded before
+        const script = document.createElement('script');
+        script.src = 'https://maps.googleapis.com/maps/api/js?key=AIzaSyAgpnrFQijZWaCb3cf-5NJ5RFu7umLKxW8&callback=initMap';
+        script.async = true;
+        document.head.appendChild(script);
+        mapApiLoaded = true;
+    } else if (mapInitialized) {
+        // If the map is already initialized, just calculate the route
+        calculateRoute();
+    }
+}
+
+function closeDrivingTimePopup() {
+    const popup = document.getElementById('drivingTimePopup');
+    if (popup) {
+        popup.remove();
+    }
+    // Don't reset mapInitialized here, as we want to reuse the map object
+}
+
+let map, directionsService, directionsRenderer;
+
+function initMap() {
+    if (!mapInitialized) {
+        map = new google.maps.Map(document.getElementById('map'), {
+            center: { lat: 22.3193, lng: 114.1694 }, // Hong Kong
+            zoom: 12
+        });
+        directionsService = new google.maps.DirectionsService();
+        directionsRenderer = new google.maps.DirectionsRenderer({
+            map: map,
+            panel: document.getElementById('directions-panel')
+        });
+        mapInitialized = true;
+    }
+    
+    // Calculate route after initializing the map
+    calculateRoute();
+}
+
+function calculateRoute() {
+    const request = {
+        origin: 'Jardine House, 1 Connaught Pl, Central, Hong Kong',
+        destination: 'Cityplaza, Taikoo Shing Road, Quarry Bay, Hong Kong',
+        waypoints: [
+            {
+                location: 'Immigration Tower, 7 Gloucester Rd, Wan Chai, Hong Kong',
+                stopover: true
+            },
+            {
+                location: 'Wan Chai Ferry Pier, 2/F Wan Chai Ferry Pier, Hung Hing Rd, Wan Chai, Hong Kong',
+                stopover: true
+            }
+        ],
+        travelMode: google.maps.TravelMode.DRIVING,
+        optimizeWaypoints: true
+    };
+
+    directionsService.route(request, (response, status) => {
+        if (status === google.maps.DirectionsStatus.OK) {
+            directionsRenderer.setDirections(response);
+            
+            // Calculate and display ETA
+            const route = response.routes[0];
+            let totalDuration = 0;
+            for (let i = 0; i < route.legs.length; i++) {
+                totalDuration += route.legs[i].duration.value;
+            }
+            const minutes = Math.ceil(totalDuration / 60);
+            
+            const etaElement = document.getElementById('eta');
+            etaElement.textContent = `Estimated Journey Time: ${minutes} min (Driving only)`;
+
+            const noteElement = document.getElementById('note');
+            noteElement.textContent = '(Note: Bus time may take longer.)';
+
+            document.getElementById('showDetailsBtn').style.display = 'inline-block';
+        } else {
+            console.error('Directions request failed due to ' + status);
+        }
+    });
+}
+
+function toggleDetails() {
+    const mapElement = document.getElementById('map');
+    const directionsPanel = document.getElementById('directions-panel');
+    const showDetailsBtn = document.getElementById('showDetailsBtn');
+
+    if (mapElement.style.display === 'none') {
+        mapElement.style.display = 'block';
+        directionsPanel.style.display = 'block';
+        showDetailsBtn.textContent = 'Hide Details';
+    } else {
+        mapElement.style.display = 'none';
+        directionsPanel.style.display = 'none';
+        showDetailsBtn.textContent = 'Show Details';
     }
 }
