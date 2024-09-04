@@ -8,10 +8,6 @@ const UPDATE_INTERVAL = 20000; // 20 seconds
 let etaHistory = [];
 const MAX_HISTORY_LENGTH = 9;
 
-// Add these variables at the top of the file
-let mapApiLoaded = false;
-let mapInitialized = false;
-
 async function findBusInfo() {
     const resultsDiv = document.getElementById('results');
     if (!resultsDiv) {
@@ -821,11 +817,6 @@ function updateOtherBusCountdown(etaId, etaTime) {
 
 // Add this new function at the end of the file
 function showDrivingTime() {
-    if (document.getElementById('drivingTimePopup')) {
-        // If the popup is already open, just return
-        return;
-    }
-
     const popupHtml = `
         <div id="drivingTimePopup" style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border: 1px solid black; z-index: 1000; max-width: 80%; max-height: 80%; overflow: auto;">
             <h2>Estimated Journey Time</h2>
@@ -839,17 +830,11 @@ function showDrivingTime() {
     `;
     document.body.insertAdjacentHTML('beforeend', popupHtml);
 
-    if (!mapApiLoaded) {
-        // Load Google Maps API script only if it hasn't been loaded before
-        const script = document.createElement('script');
-        script.src = 'https://maps.googleapis.com/maps/api/js?key=AIzaSyAgpnrFQijZWaCb3cf-5NJ5RFu7umLKxW8&callback=initMap';
-        script.async = true;
-        document.head.appendChild(script);
-        mapApiLoaded = true;
-    } else if (mapInitialized) {
-        // If the map is already initialized, just calculate the route
-        calculateRoute();
-    }
+    // Load Google Maps API script
+    const script = document.createElement('script');
+    script.src = 'https://maps.googleapis.com/maps/api/js?key=AIzaSyAgpnrFQijZWaCb3cf-5NJ5RFu7umLKxW8&callback=initMap';
+    script.async = true;
+    document.head.appendChild(script);
 }
 
 function closeDrivingTimePopup() {
@@ -857,26 +842,22 @@ function closeDrivingTimePopup() {
     if (popup) {
         popup.remove();
     }
-    // Don't reset mapInitialized here, as we want to reuse the map object
 }
 
 let map, directionsService, directionsRenderer;
 
 function initMap() {
-    if (!mapInitialized) {
-        map = new google.maps.Map(document.getElementById('map'), {
-            center: { lat: 22.3193, lng: 114.1694 }, // Hong Kong
-            zoom: 12
-        });
-        directionsService = new google.maps.DirectionsService();
-        directionsRenderer = new google.maps.DirectionsRenderer({
-            map: map,
-            panel: document.getElementById('directions-panel')
-        });
-        mapInitialized = true;
-    }
+    map = new google.maps.Map(document.getElementById('map'), {
+        center: { lat: 22.3193, lng: 114.1694 }, // Hong Kong
+        zoom: 12
+    });
+    directionsService = new google.maps.DirectionsService();
+    directionsRenderer = new google.maps.DirectionsRenderer({
+        map: map,
+        panel: document.getElementById('directions-panel')
+    });
     
-    // Calculate route after initializing the map
+    // Automatically calculate route after initializing the map
     calculateRoute();
 }
 
@@ -887,36 +868,44 @@ function calculateRoute() {
         waypoints: [
             {
                 location: 'Immigration Tower, 7 Gloucester Rd, Wan Chai, Hong Kong',
-                stopover: true
+                stopover: false
             },
             {
                 location: 'Wan Chai Ferry Pier, 2/F Wan Chai Ferry Pier, Hung Hing Rd, Wan Chai, Hong Kong',
-                stopover: true
+                stopover: false
             }
         ],
         travelMode: google.maps.TravelMode.DRIVING,
-        optimizeWaypoints: true
+        optimizeWaypoints: true,
+        drivingOptions: {
+            departureTime: new Date(),
+            trafficModel: google.maps.TrafficModel.BEST_GUESS
+        }
     };
 
     directionsService.route(request, (response, status) => {
         if (status === google.maps.DirectionsStatus.OK) {
             directionsRenderer.setDirections(response);
             
-            // Calculate and display ETA
+            // Calculate and display ETA using duration_in_traffic
             const route = response.routes[0];
             let totalDuration = 0;
             for (let i = 0; i < route.legs.length; i++) {
-                totalDuration += route.legs[i].duration.value;
+                // Use duration_in_traffic if available, otherwise fall back to duration
+                totalDuration += route.legs[i].duration_in_traffic ? route.legs[i].duration_in_traffic.value : route.legs[i].duration.value;
             }
             const minutes = Math.ceil(totalDuration / 60);
             
             const etaElement = document.getElementById('eta');
-            etaElement.textContent = `Estimated Journey Time: ${minutes} min (Driving only)`;
+            etaElement.textContent = `Estimated Journey Time: ${minutes} min (Driving only, with traffic)`;
 
             const noteElement = document.getElementById('note');
             noteElement.textContent = '(Note: Bus time may take longer.)';
 
             document.getElementById('showDetailsBtn').style.display = 'inline-block';
+
+            // Log the estimated travel time with traffic
+            console.log('Estimated travel time with traffic:', `${minutes} minutes`);
         } else {
             console.error('Directions request failed due to ' + status);
         }
