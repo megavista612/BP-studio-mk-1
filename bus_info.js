@@ -867,6 +867,10 @@ function calculateRoute() {
         destination: 'Cityplaza, Taikoo Shing Road, Quarry Bay, Hong Kong',
         waypoints: [
             {
+                location: 'Golden Star Building, 20-24 Lockhart Rd, Wan Chai, Hong Kong',
+                stopover: false
+            },
+            {
                 location: 'Immigration Tower, 7 Gloucester Rd, Wan Chai, Hong Kong',
                 stopover: false
             },
